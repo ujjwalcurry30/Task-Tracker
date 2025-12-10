@@ -28,21 +28,66 @@ async function apiRequest(path, method = 'GET', body, token) {
   }
 }
 
+function NotificationBar({ message, show, onClose }) {
+  useEffect(() => {
+    if (show) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [show, onClose]);
+
+  if (!show) return null;
+
+  return (
+    <div className="notification-bar">
+      <span>{message}</span>
+      <button type="button" className="notification-close" onClick={onClose}>
+        ×
+      </button>
+    </div>
+  );
+}
+
 function AuthView({ mode, onToggleMode, onAuthSuccess }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showValidation, setShowValidation] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   const isSignUp = mode === 'signup';
+
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setShowValidation(true);
+    setShowNotification(false);
 
+    // Check if fields are empty
     if (!email || !password || (isSignUp && !name)) {
       setError('Please fill all required fields.');
+      if (!email || !password) {
+        setNotificationMessage('Please enter a valid email and password.');
+        setShowNotification(true);
+      }
+      return;
+    }
+
+    // Check if email format is valid
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      setNotificationMessage('Please enter a valid email address format.');
+      setShowNotification(true);
       return;
     }
 
@@ -65,22 +110,28 @@ function AuthView({ mode, onToggleMode, onAuthSuccess }) {
 
   return (
     <div className="app-shell">
+      <NotificationBar
+        message={notificationMessage || 'Please enter a valid email and password.'}
+        show={showNotification}
+        onClose={() => setShowNotification(false)}
+      />
       <div className="auth-card">
         <h1 className="app-title">Task Tracker</h1>
         <p className="app-subtitle">
           {isSignUp ? 'Create an account to manage your tasks.' : 'Log in to access your tasks.'}
         </p>
 
-        <form onSubmit={handleSubmit} className="form">
+        <form onSubmit={handleSubmit} className="form" noValidate>
           {isSignUp && (
             <div className="form-field">
               <label htmlFor="name">Name</label>
               <input
                 id="name"
                 type="text"
-                placeholder="Jane Doe"
+                placeholder="Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className={showValidation && !name ? 'invalid' : ''}
               />
             </div>
           )}
@@ -89,10 +140,24 @@ function AuthView({ mode, onToggleMode, onAuthSuccess }) {
             <label htmlFor="email">Email</label>
             <input
               id="email"
-              type="email"
-              placeholder="you@example.com"
+              type="text"
+              placeholder="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (showNotification && e.target.value && isValidEmail(e.target.value)) {
+                  setShowNotification(false);
+                }
+              }}
+              onBlur={() => {
+                if (email && !isValidEmail(email)) {
+                  setNotificationMessage('Please enter a valid email address format.');
+                  setShowNotification(true);
+                }
+              }}
+              className={
+                showValidation && (!email || (email && !isValidEmail(email))) ? 'invalid' : ''
+              }
             />
           </div>
 
@@ -101,9 +166,15 @@ function AuthView({ mode, onToggleMode, onAuthSuccess }) {
             <input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (showNotification && e.target.value) {
+                  setShowNotification(false);
+                }
+              }}
+              className={showValidation && !password ? 'invalid' : ''}
             />
           </div>
 
@@ -122,7 +193,7 @@ function AuthView({ mode, onToggleMode, onAuthSuccess }) {
   );
 }
 
-function TaskForm({ initialTask, onCancel, onSave }) {
+function TaskForm({ initialTask, onCancel, onSave, users = [], currentUserId }) {
   const [title, setTitle] = useState(initialTask?.title || '');
   const [description, setDescription] = useState(initialTask?.description || '');
   const [dueDate, setDueDate] = useState(
@@ -130,6 +201,15 @@ function TaskForm({ initialTask, onCancel, onSave }) {
   );
   const [priority, setPriority] = useState(initialTask?.priority || 'medium');
   const [status, setStatus] = useState(initialTask?.status || 'todo');
+  const [assignedTo, setAssignedTo] = useState(() => {
+    if (initialTask?.assignedTo) {
+      if (typeof initialTask.assignedTo === 'object' && initialTask.assignedTo._id) {
+        return initialTask.assignedTo._id;
+      }
+      return initialTask.assignedTo;
+    }
+    return '';
+  });
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -146,6 +226,7 @@ function TaskForm({ initialTask, onCancel, onSave }) {
       dueDate: dueDate || null,
       priority,
       status,
+      assignedTo: assignedTo && assignedTo.trim() ? assignedTo : null,
     });
   };
 
@@ -204,6 +285,22 @@ function TaskForm({ initialTask, onCancel, onSave }) {
                 <option value="done">Done</option>
               </select>
             </div>
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="assignedTo">Assign to</label>
+            <select
+              id="assignedTo"
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+            >
+              <option value="">Unassigned</option>
+              {users.map((user) => (
+                <option key={user._id} value={user._id}>
+                  {user.name} {user._id === currentUserId ? '(You)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           {error && <p className="form-error">{error}</p>}
@@ -311,6 +408,11 @@ function TaskList({
                   </span>
                 )}
                 <span className="priority-pill">{task.priority} priority</span>
+                {task.assignedTo && (
+                  <span className="assigned-to">
+                    Assigned to: {task.assignedTo.name || task.assignedTo.email}
+                  </span>
+                )}
               </div>
               <div className="task-card-actions">
                 <button type="button" className="ghost-btn" onClick={() => onEdit(task)}>
@@ -342,6 +444,7 @@ function App() {
   const [filters, setFilters] = useState({ status: '', search: '' });
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('taskTrackerToken');
@@ -360,9 +463,20 @@ function App() {
   useEffect(() => {
     if (token) {
       loadTasks();
+      loadUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, filters.status, filters.search]);
+
+  const loadUsers = async () => {
+    if (!token) return;
+    try {
+      const data = await apiRequest('/api/auth/users', 'GET', undefined, token);
+      setUsers(data);
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    }
+  };
 
   const loadTasks = async () => {
     if (!token) return;
@@ -469,6 +583,8 @@ function App() {
             setEditingTask(null);
           }}
           onSave={handleSaveTask}
+          users={users}
+          currentUserId={user?.id}
         />
       )}
     </>

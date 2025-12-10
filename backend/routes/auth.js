@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
-import { signToken } from '../middleware/auth.js';
+import { signToken, authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -80,6 +80,17 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     return res.status(500).json({ message: 'Server error during login.' });
+  }
+});
+
+// GET /api/auth/users - get list of users for task assignment (requires auth)
+router.get('/users', authMiddleware, async (req, res) => {
+  try {
+    const users = await User.find({}, 'name email').sort({ name: 1 });
+    return res.json(users);
+  } catch (err) {
+    console.error('Fetch users error:', err);
+    return res.status(500).json({ message: 'Failed to load users.' });
   }
 });
 

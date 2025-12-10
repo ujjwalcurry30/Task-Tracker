@@ -1,3 +1,54 @@
+.notification-bar {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background-color: #dc2626;
+  color: #ffffff;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 1000;
+  animation: slideInFromRight 0.3s ease-out;
+  max-width: 400px;
+  font-size: 0.9rem;
+}
+
+.notification-close {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.notification-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 .app-shell {
   min-height: calc(100vh - 56px);
   display: flex;
@@ -62,6 +113,20 @@
   outline: none;
   border-color: #4f46e5;
   box-shadow: 0 0 0 1px #4f46e5;
+}
+
+.form-field input.invalid,
+.form-field textarea.invalid,
+.form-field select.invalid {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px #dc2626;
+}
+
+.form-field input.invalid:focus,
+.form-field textarea.invalid:focus,
+.form-field select.invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px #dc2626;
 }
 
 .form-field textarea {
@@ -264,6 +329,14 @@
   border: 1px solid #e5e7eb;
 }
 
+.assigned-to {
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+}
+
 .task-card.priority-high {
   border-color: #fecaca;
   box-shadow: 0 0 0 1px #fecaca;
@@ -316,6 +389,13 @@
 }
 
 @media (max-width: 768px) {
+  .notification-bar {
+    top: 0.5rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    max-width: none;
+  }
+
   .top-bar {
     padding-inline: 1rem;
   }
